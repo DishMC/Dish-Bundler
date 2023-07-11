@@ -1,0 +1,48 @@
+plugins {
+    id 'java'
+}
+
+group = 'net.ouja'
+version = '0.1-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+configurations {
+    shade
+    compile.extendsFrom shade
+}
+
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.9.1')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+jar {
+    configurations.shade.each { dep ->
+        from(project.zipTree(dep)) {
+            exclude 'META-INF', 'META-INF/**'
+        }
+    }
+    manifest {
+        attributes(
+                'Manifest-Version': 1.0,
+                'Main-Class': 'net.ouja.bundler.Main'
+        )
+    }
+    def libBuildDir = mkdir "${buildDir}/META-INF"
+    copy {
+        from { fileTree(dir: 'libs', include:
+                '**/*.jar') }
+        into { libBuildDir }
+    }
+    from('build') {
+        include 'META-INF/libraries/**/*.jar'
+        include 'META-INF/versions/**/*.jar'
+    }
+}
