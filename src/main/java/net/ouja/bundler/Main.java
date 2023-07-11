@@ -1,9 +1,6 @@
 package net.ouja.bundler;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -15,6 +12,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.FileAttribute;
+import java.security.DigestOutputStream;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -88,10 +87,10 @@ public class Main {
     }
 
     private void checkAndExtractJar(String subdir, FileEntry entry, Path outputFile) throws Exception {
-//        if (!Files.exists(outputFile, new java.nio.file.LinkOption[0]) || !checkIntegrity(outputFile, entry.hash())) {
+        if (!Files.exists(outputFile) || !checkIntegrity(outputFile, entry.hash())) {
             System.out.printf("Unpacking %s (%s:%s) to %s%n", entry.path(), subdir, entry.id(), outputFile);
             extractJar(subdir, entry.path(), outputFile);
-//        }
+        }
     }
 
     private void extractJar(String subdir, String jarPath, Path outputFile) throws IOException {
@@ -111,5 +110,38 @@ public class Main {
             }
             throw throwable;
         }
+    }
+
+    private static boolean checkIntegrity(Path file, String expectedHash) throws Exception {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        InputStream output = Files.newInputStream(file);
+        try {
+            output.transferTo(new DigestOutputStream(OutputStream.nullOutputStream(), digest));
+            String actualHash = byteToHex(digest.digest());
+            if (actualHash.equalsIgnoreCase(expectedHash)) {
+                boolean bool = true;
+                output.close();
+                return bool;
+            }
+            System.out.printf("Expected file %s to have hash %s, but got %s%n", file, expectedHash, actualHash);
+            output.close();
+        } catch (Throwable throwable) {
+            try {
+                output.close();
+            } catch (Throwable throwable1) {
+                throwable.addSuppressed(throwable1);
+            }
+            throw throwable;
+        }
+        return false;
+    }
+
+    private static String byteToHex(byte[] bytes) {
+        StringBuilder result = new StringBuilder(bytes.length * 2);
+        for (byte b : bytes) {
+            result.append(Character.forDigit(b >> 4 & 0xF, 16));
+            result.append(Character.forDigit(b >> 0 & 0xF, 16));
+        }
+        return result.toString();
     }
 }
