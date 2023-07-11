@@ -41,14 +41,8 @@ jar {
                 '**/*.jar') }
         into { libBuildDir }
     }
-    copy {
-        from { fileTree(dir: 'libs/META-INF', include:
-                '*') }
-        into { libBuildDir }
-    }
     from('build') {
         include 'META-INF/libraries/**/*.jar'
         include 'META-INF/versions/**/*.jar'
-        include 'META-INF/*'
     }
 }
